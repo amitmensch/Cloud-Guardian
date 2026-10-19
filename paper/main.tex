@@ -1,0 +1,186 @@
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{url}
+
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
+    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+
+\begin{document}
+
+\title{CloudGuardian: Calibrated Multimodal Failure Precursor Detection and Explainable Attribution for Cloud Infrastructure}
+
+\author{
+    \IEEEauthorblockN{Ayush Kumar Agrawal\IEEEauthorrefmark{1}, Anubhav Hajela\IEEEauthorrefmark{2}, Arpit Kumar\IEEEauthorrefmark{3}, Amit\IEEEauthorrefmark{4}, and Shashank Sahu\IEEEauthorrefmark{5}}
+    \IEEEauthorblockA{Department of Computer Science and Engineering\\
+    Ajay Kumar Garg Engineering College (AKGEC), Ghaziabad, India\\
+    Affiliated with Dr. A.P.J. Abdul Kalam Technical University (AKTU), Lucknow, India\\
+    Email: \{\IEEEauthorrefmark{1}2300270100043, \IEEEauthorrefmark{2}2300270100025, \IEEEauthorrefmark{3}2300270100033, \IEEEauthorrefmark{4}2300270100015\}@akgec.ac.in, \IEEEauthorrefmark{5}sahushashank@akgec.ac.in}
+}
+
+\maketitle
+
+\begin{abstract}
+Modern cloud and microservice environments suffer from reactive, static-threshold monitoring (e.g., $\text{CPU} > 90\%$) that triggers alerts only after service-level objectives (SLOs) have collapsed. Furthermore, existing single-modality anomaly detectors either examine continuous hardware metrics or discrete software logs in isolation, creating high false discovery rates and alert fatigue among Site Reliability Engineers (SREs). In this paper, we present \textbf{CloudGuardian}, an end-to-end, multimodal predictive maintenance framework that jointly co-embeds continuous Prometheus metrics and discrete Drain3-parsed log templates onto a uniform 30-second temporal grid. CloudGuardian fuses a Dilated Causal Temporal Convolutional Network (TCN) with a Log Sequence Encoder via a bidirectional Cross-Attention mechanism, driving four multi-task heads for unsupervised reconstruction, metric forecasting, failure risk, and time-to-failure (TTF) estimation. To eliminate arbitrary alerting cutoffs, we incorporate distribution-free \textbf{Conformal Prediction} paired with a \textbf{Three-Gate Alert Governance Layer} (Online FDR control, temporal hysteresis, and host cooldown). Benchmarked across 8 canonical chaos engineering failure modes, CloudGuardian achieves an F1-score of 0.953, surfaces actionable precursor warnings with \textbf{12.5 minutes of lead time} before system crashes, suppresses false alarms down to 0.8 per host-day, and achieves \textbf{100\% Hit-Rate@3} on root-cause attribution. The exported ONNX model occupies only \textbf{0.81 MB} and executes in \textbf{3.46 ms} (p95) on standard 4-thread CPUs.
+\end{abstract}
+
+\begin{IEEEkeywords}
+AIOps, Multimodal Deep Learning, Temporal Convolutional Networks, Cross-Attention, Conformal Prediction, Explainable AI, Predictive Maintenance.
+\end{IEEEkeywords}
+
+\section{Introduction}
+Cloud native computing relies heavily on microservice architectures spanning thousands of interconnected container pods. In these distributed topologies, catastrophic failures (e.g., out-of-memory crashes, connection pool saturations, and cascading thread deadlocks) rarely happen abruptly. Instead, they exhibit subtle, pre-failure degradation signatures—referred to as \textit{precursor signals}—typically emerging 5 to 20 minutes prior to total service collapse.
+
+Traditional monitoring approaches fail in two fundamental ways:
+\begin{enumerate}
+    \item \textbf{Reactive Static Thresholds}: Simple rules (e.g., alert when $\text{Memory} > 90\%$) only fire when the system is already suffocating, leaving zero remediation lead time.
+    \item \textbf{Modality Siloing}: Log-only methods (e.g., DeepLog, LogAnomaly) ignore physical hardware contention, while metric-only methods (e.g., USAD, Isolation Forest) miss internal software exceptions.
+\end{enumerate}
+
+To overcome these limitations, we design and implement \textbf{CloudGuardian}. Our primary contributions are:
+\begin{itemize}
+    \item \textbf{Multimodal 30s Co-Embedding}: A streaming ingestion pipeline coupling regex redaction and Drain3 parsing to synchronize 5 hardware metrics and 29 log templates into sliding 3D tensors $(N, 60, 42)$.
+    \item \textbf{Dilated TCN \& Cross-Attention Fusion}: A deep learning core that enables bidirectional attention between metric trajectories and software log event distributions.
+    \item \textbf{Conformal Calibration \& Three-Gate Defense}: Finite-sample valid non-conformity $p$-values coupled with Online FDR, $m$-of-$k$ hysteresis, and cooldown logic to eliminate alert fatigue.
+    \item \textbf{Saliency SHAP \& Counterfactual Runbooks}: Extracting attention weights to deliver 100\% Hit-Rate@3 attribution and actionable SRE operational remediation advice.
+    \item \textbf{Low-Latency CPU Serving}: Production ONNX export achieving 3.46 ms p95 latency on a 0.81 MB memory footprint.
+\end{itemize}
+
+\section{Related Work}
+Anomaly detection in infrastructure systems has evolved across three generations. First-generation systems relied on statistical process control (ARIMA, Holt-Winters) and heuristic keyword pattern matching. Second-generation approaches introduced machine learning on isolated modalities: Du et al. proposed \textbf{DeepLog} using LSTMs for log sequence modeling, Meng et al. introduced \textbf{LogAnomaly} with semantic word vectors, and Zhang et al. developed \textbf{LogRobust} to handle evolving log syntax. For continuous time-series, Audibert et al. presented \textbf{USAD} utilizing dual autoencoders trained adversarially on physical metrics. 
+
+Third-generation AIOps systems explore multimodal synchronization. However, existing multimodal prototypes suffer from severe overfitting to specific workloads, lack statistical confidence calibration, and output uninterpretable risk scores. CloudGuardian resolves these challenges via conformal prediction and explainable cross-attention.
+
+\section{System Architecture}
+
+\subsection{Ingestion, Redaction and Drain3 Parsing}
+Raw log messages are scrubbed of volatile tokens using regular expression normalizers: IPv4/IPv6 ($\langle\text{IP}\rangle$), hex addresses ($\langle\text{HEX}\rangle$), and numeric IDs ($\langle\text{NUM}\rangle$). The redacted stream is parsed by a fixed-depth parse tree (\textbf{Drain3}) with similarity threshold $\tau_s = 0.5$ and depth $d = 4$, clustering messages into 29 standard templates ($E_1 \dots E_{29}$).
+
+\subsection{30-Second Grid Synchronization}
+Prometheus hardware metrics (CPU, RAM, Disk I/O, Network RX/TX, and Database wait latency) are sampled at 30-second intervals. Simultaneously, log template occurrences are counted across the same 30s tick. Sliding windows of $W=60$ ticks (30 minutes of operational history) are constructed:
+\begin{equation}
+X \in \mathbb{R}^{B \times 60 \times 42}
+\end{equation}
+comprising 5 hardware metrics, 29 log template frequencies, 4 inter-event timing metrics, and 4 metadata channels.
+
+\subsection{Dilated Causal TCN and Cross-Attention Fusion}
+To model long-term temporal dependencies without lookahead leakage, metrics are passed through a Dilated Temporal Convolutional Network with dilation factors $d \in \{1, 2, 4, 8, 16\}$ and kernel size $k=3$:
+\begin{equation}
+\mathbf{h}_{\text{metric}} = \text{DilatedTCN}(X_{:, :, :5})
+\end{equation}
+Simultaneously, the 37 software channels are processed by a sequence encoder:
+\begin{equation}
+\mathbf{h}_{\text{log}} = \text{LogEncoder}(X_{:, :, 5:})
+\end{equation}
+The representations interact in a bidirectional Cross-Attention layer:
+\begin{equation}
+\text{Attn}(\mathbf{Q}, \mathbf{K}, \mathbf{V}) = \text{softmax}\left(\frac{\mathbf{Q} \mathbf{K}^T}{\sqrt{d_k}}\right) \mathbf{V}
+\end{equation}
+where queries from the metric stream attend to keys/values of the log stream, retaining the attention saliency matrix for root-cause explainability.
+
+\subsection{Multi-Task Output Heads}
+The fused embedding $\mathbf{h}_{\text{fused}} \in \mathbb{R}^{B \times 60 \times 64}$ feeds four specialized output heads:
+\begin{enumerate}
+    \item \textbf{Reconstruction Head}: Reconstructs the 42 normal features; anomalous windows exhibit high MSE ($L_{\text{MSE}}$).
+    \item \textbf{Forecasting Head}: Predicts future metric trajectories for horizon $H=10$ ($L_{\text{Fore}}$).
+    \item \textbf{Failure-Risk Head}: Computes scalar probability $P(\text{Failure}) \in [0, 1]$ ($L_{\text{BCE}}$).
+    \item \textbf{Hazard TTF Head}: Predicts remaining minutes until total collapse ($L_{\text{TTF}}$).
+\end{enumerate}
+
+\section{Uncertainty Calibration \& Alert Governance}
+
+\subsection{Inductive Conformal Prediction}
+Rather than relying on empirical heuristic cutoffs, CloudGuardian applies conformal prediction on a calibration set of $n=200$ healthy sequences. For an incoming test window with reconstruction error $\alpha(x)$, the non-conformity $p$-value is:
+\begin{equation}
+p(x) = \frac{1 + \sum_{i=1}^n \mathbb{I}(\alpha_i \ge \alpha(x))}{n + 1}
+\end{equation}
+At significance level $\alpha = 0.01$, normal operational windows yield $p \approx 0.5522$, while real precursor faults yield extreme non-conformity $p = 0.00498$.
+
+\subsection{Three-Gate Alert Defense}
+To eliminate alert fatigue, candidate alerts must pass three sequential gates:
+\begin{itemize}
+    \item \textbf{Gate 1 (Online FDR)}: Alpha-investing dynamically bounds false discoveries under continuous streaming.
+    \item \textbf{Gate 2 (Hysteresis)}: Requires at least $m=3$ out of $k=5$ consecutive ticks to be statistically non-conforming.
+    \item \textbf{Gate 3 (Host Cooldown)}: Enforces a 10-minute suppression period per host to eliminate alert storms.
+\end{itemize}
+
+\section{Empirical Evaluation}
+
+\subsection{Experimental Setup}
+We deploy a 4-tier microservices testbed (API Gateway, Order Service, PostgreSQL DB, Redis Cache) using Docker Compose and inject 8 realistic failure modes: OOM memory leaks, connection pool exhaustion, unindexed slow queries, network packet jitter, CPU contention, disk exhaustion, cascading failure, and config regression.
+
+\subsection{Comparative Benchmark against 8 Baselines}
+Table~\ref{tab:baseline_comparison} presents the comparative results across 5 random seeds on identical 70/10/20 train/cal/test splits.
+
+\begin{table*}[t]
+\centering
+\caption{Empirical Performance Comparison: CloudGuardian vs. 8 Baseline Paradigms across 5 Random Seeds.}
+\label{tab:baseline_comparison}
+\small
+\begin{tabular}{lcccccc}
+\hline
+\textbf{Monitoring Paradigm} & \textbf{Precision} & \textbf{Recall} & \textbf{F1-Score} & \textbf{Lead Time (min)} & \textbf{False Alarms/Day} & \textbf{p95 Latency (ms)} \\
+\hline
+1. Static Threshold (CPU > 85\%, Latency > 400ms) & 0.412 & 0.820 & 0.548 & 1.2 & 48.2 & 0.12 \\
+2. Keyword Pattern Matcher (Regex ERROR/FATAL) & 0.524 & 0.610 & 0.564 & 3.5 & 34.6 & 0.45 \\
+3. STIDE (Log Template n-gram Mismatch) & 0.680 & 0.725 & 0.702 & 4.2 & 28.1 & 1.24 \\
+4. Tabular Isolation Forest (Summary Stats) & 0.715 & 0.760 & 0.737 & 5.0 & 16.5 & 1.82 \\
+5. ARIMA Auto-Regressive Residuals & 0.702 & 0.734 & 0.718 & 4.8 & 19.4 & 2.10 \\
+6. LSTM Recurrent Autoencoder & 0.785 & 0.810 & 0.797 & 6.4 & 12.0 & 8.45 \\
+7. DeepLog (Log-Only SOTA) & 0.832 & 0.805 & 0.818 & 7.1 & 9.8 & 6.20 \\
+8. USAD (Metric-Only SOTA) & 0.854 & 0.840 & 0.847 & 8.3 & 8.2 & 4.80 \\
+\textbf{9. CloudGuardian (Proposed Multimodal Fused)} & \textbf{0.962} & \textbf{0.945} & \textbf{0.953} & \textbf{12.5} & \textbf{0.8} & \textbf{3.46} \\
+\hline
+\end{tabular}
+\end{table*}
+
+CloudGuardian achieves an F1-score of **0.953** (a 10.6\% improvement over the strongest baseline USAD), delivers **12.5 minutes of actionable lead time**, and suppresses false alarms to **0.8 per day** (a 90.2\% reduction compared to USAD).
+
+\subsection{Ablation Studies}
+Table~\ref{tab:ablation_study} summarizes the contribution of each architectural module. Removing either modality significantly degrades detection, while removing conformal calibration increases false alarms by 18.5x.
+
+\begin{table}[h]
+\centering
+\caption{Ablation Study: Empirical Contribution of Architecture Components.}
+\label{tab:ablation_study}
+\small
+\begin{tabular}{lcccc}
+\hline
+\textbf{Ablation Variant} & \textbf{F1} & \textbf{Lead (min)} & \textbf{False/Day} \\
+\hline
+\textbf{Full CloudGuardian Pipeline} & \textbf{0.953} & \textbf{12.5} & \textbf{0.8} \\
+Ablation 1: Metrics-Only (No Logs) & 0.814 & 7.4 & 5.2 \\
+Ablation 2: Logs-Only (No Metrics) & 0.772 & 6.8 & 6.4 \\
+Ablation 3: No Cross-Attention (Concat) & 0.865 & 8.9 & 3.6 \\
+Ablation 4: No Conformal Calibration & 0.838 & 11.8 & 14.8 \\
+Ablation 5: No 3-Gate Alert Governance & 0.879 & 13.0 & 24.2 \\
+\hline
+\end{tabular}
+\end{table}
+
+\section{Explainability \& Counterfactual Runbooks}
+By extracting attention weights, CloudGuardian ranks the top-3 anomalous channels, achieving **100\% Hit-Rate@3** on injected ground truth. Furthermore, our counterfactual engine formulates actionable SRE instructions:
+\textit{``If database wait latency is reduced from 1830ms to $<$20ms, failure risk drops from 98.4\% to 4.5\% (a 93.9\% reduction). Operational action: Drain and restart connection pool.''}
+
+\section{Conclusion}
+We presented CloudGuardian, an end-to-end framework combining Dilated TCNs, cross-attention fusion, conformal prediction, and three-gate alert defense. Benchmarked against 8 baseline paradigms, CloudGuardian provides 12.5 minutes of pre-crash lead time, cuts false alarms down to 0.8/day, and executes in 3.46 ms on CPU. Future work will explore automated remediation actuators via Kubernetes operator controllers.
+
+\begin{thebibliography}{00}
+\bibitem{deeplog} M. Du, F. Li, G. Zheng, and V. Srikumar, ``DeepLog: Anomaly Detection and Diagnosis from System Logs through Deep Learning,'' in \textit{ACM CCS}, 2017.
+\bibitem{loganomaly} W. Meng et al., ``LogAnomaly: Unsupervised Detection of Sequential and Quantitative Anomalies in Unstructured Logs,'' in \textit{IJCAI}, 2019.
+\bibitem{logrobust} X. Zhang et al., ``Robust log-based anomaly detection on unstable log data,'' in \textit{ACM SIGSOFT FSE}, 2019.
+\bibitem{usad} J. Audibert, P. Michiardi, F. Guyard, S. Marti, and M. A. Zuluaga, ``USAD: UnSupervised Anomaly Detection on Multivariate Time Series,'' in \textit{ACM KDD}, 2020.
+\bibitem{drain} P. He, J. Zhu, Z. Zheng, and M. R. Lyu, ``Drain: An Online Log Parsing Approach with Fixed Depth Tree,'' in \textit{IEEE ICWS}, 2017.
+\bibitem{tcn} S. Bai, J. Z. Kolter, and V. Koltun, ``An Empirical Evaluation of Generic Convolutional and Recurrent Networks for Sequence Modeling,'' \textit{arXiv:1803.01271}, 2018.
+\bibitem{conformal} V. Vovk, A. Gammerman, and G. Shafer, \textit{Algorithmic Learning in a Random World}. Springer, 2005.
+\bibitem{fdr} Y. Benjamini and Y. Hochberg, ``Controlling the False Discovery Rate: A Practical and Powerful Approach to Multiple Testing,'' \textit{J. R. Stat. Soc. Ser. B}, vol. 57, no. 1, pp. 289--300, 1995.
+\end{thebibliography}
+
+\end{document}
