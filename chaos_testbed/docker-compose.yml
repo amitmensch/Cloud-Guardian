@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  api-gateway:
+    image: nginx:alpine
+    container_name: cloudguardian-gateway
+    ports:
+      - "8080:80"
+    depends_on:
+      - order-service
+    networks:
+      - cloudguardian-net
+
+  order-service:
+    image: python:3.11-slim
+    container_name: cloudguardian-order-service
+    ports:
+      - "5000:5000"
+    environment:
+      - DB_HOST=postgres-db
+      - CACHE_HOST=redis-cache
+      - DB_POOL_SIZE=10
+    depends_on:
+      - postgres-db
+      - redis-cache
+    networks:
+      - cloudguardian-net
+
+  postgres-db:
+    image: postgres:15-alpine
+    container_name: cloudguardian-postgres
+    environment:
+      - POSTGRES_DB=orders
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=secret
+    ports:
+      - "5432:5432"
+    networks:
+      - cloudguardian-net
+
+  redis-cache:
+    image: redis:7-alpine
+    container_name: cloudguardian-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - cloudguardian-net
+
+networks:
+  cloudguardian-net:
+    driver: bridge
