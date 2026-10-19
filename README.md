@@ -1,11 +1,12 @@
 # CloudGuardian: AI-Powered Predictive Maintenance and Anomaly Detection
 
 [![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/downloads/release/python-3110/)
-[![Tests Passing](https://img.shields.io/badge/tests-24%20passed-brightgreen.svg)]()
+[![Tests Passing](https://img.shields.io/badge/tests-32%20passed-brightgreen.svg)]()
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![ONNX CPU Serving](https://img.shields.io/badge/ONNX%20CPU-3.46ms%20p95-blueviolet.svg)]()
+[![Explainability](https://img.shields.io/badge/XAI%20Hit--Rate%403-100%25-brightgreen.svg)]()
 
-**CloudGuardian** is an end-to-end, multimodal AIOps framework that bridges the gap between reactive static threshold monitoring (e.g., `CPU > 90%`) and proactive, calibrated failure prevention. It jointly models continuous Prometheus metrics and discrete server logs via Drain3 parsing, a Dilated Temporal Convolutional Network (TCN), Cross-Attention fusion, Conformal Prediction, and Three-Gate Alert Governance.
+**CloudGuardian** is an end-to-end, multimodal AIOps framework that bridges the gap between reactive static threshold monitoring (e.g., `CPU > 90%`) and proactive, calibrated failure prevention. It jointly models continuous Prometheus metrics and discrete server logs via Drain3 parsing, a Dilated Temporal Convolutional Network (TCN), Cross-Attention fusion, Conformal Prediction, Three-Gate Alert Governance, Saliency-Preserving SHAP Explainability, and an interactive Real-Time Cyberpunk Operations Dashboard.
 
 ---
 
@@ -51,17 +52,25 @@ cloudguardian/
 │   │   └── governance_gates.py# Three-Gate Alert Defense (FDR, Hysteresis, Cooldown)
 │   ├── deployment/            # Module 6: Lightweight Production Serving
 │   │   └── export_onnx.py     # ONNX INT8/Float export & CPU latency benchmarker
+│   ├── explainability/        # Module 7: Saliency Attribution & Counterfactuals
+│   │   ├── shap_explainer.py  # Fast attention-guided SHAP & Hit-Rate@3 evaluator
+│   │   └── counterfactual.py  # What-If generator & actionable SRE runbooks
+│   ├── server/                # Module 8: Full-Stack Serving & Operations Dashboard
+│   │   ├── api.py             # FastAPI REST + WebSocket telemetry streaming engine
+│   │   └── static/            # Glassmorphism Operations Center UI (HTML, CSS, JS)
 │   ├── demonstrate_review1.py # Live demonstrator for Review 1
 │   ├── demonstrate_review2.py # Live demonstrator for Mid-Term Review 2
-│   └── demonstrate_review3.py # Live demonstrator for Pre-Final Review 3
+│   ├── demonstrate_review3.py # Live demonstrator for Pre-Final Review 3
+│   └── demonstrate_review4.py # Live demonstrator for Pre-Viva Review 4
 ├── models_onnx/               # Exported ONNX production models (gitignored binary)
 │   └── .gitkeep
 ├── notebooks/                 # Interactive Jupyter Notebooks
 │   └── milestone1_review_demo.ipynb
-├── tests/                     # Automated Test Suite (24 passing unit tests)
-│   ├── test_phase1.py         # Ingestion & Windowing tests
-│   ├── test_phase2.py         # Deep Learning Core & Multi-Task tests
-│   └── test_phase3.py         # Calibration, Governance, Chaos & ONNX tests
+├── tests/                     # Automated Test Suite (32 passing unit tests)
+│   ├── test_phase1.py         # Ingestion & Windowing tests (8 tests)
+│   ├── test_phase2.py         # Deep Learning Core & Multi-Task tests (11 tests)
+│   ├── test_phase3.py         # Calibration, Governance, Chaos & ONNX tests (5 tests)
+│   └── test_phase4.py         # Explainability, Counterfactuals & Server tests (8 tests)
 ├── pytest.ini                 # Pytest configuration
 ├── requirements.txt           # Project dependencies
 └── README.md                  # Project overview & documentation
@@ -71,47 +80,59 @@ cloudguardian/
 
 ## Getting Started
 
-### 1. Running All Automated Unit Tests (24 Passing Tests)
+### 1. Running All Automated Unit Tests (32 Passing Tests)
 ```powershell
 .\.venv\Scripts\python.exe -m pytest -v
 ```
 
 Expected result:
 ```text
-tests/test_phase1.py ........                                            [ 33%]
-tests/test_phase2.py ...........                                         [ 79%]
-tests/test_phase3.py .....                                               [100%]
-============================= 24 passed in 14.40s =============================
+tests/test_phase1.py ........                                            [ 25%]
+tests/test_phase2.py ...........                                         [ 59%]
+tests/test_phase3.py .....                                               [ 75%]
+tests/test_phase4.py ........                                            [100%]
+======================= 32 passed, 9 warnings in 17.77s =======================
 ```
 
-### 2. Running College Milestone 1 Demo (Review 1)
+### 2. Launching the Interactive Operations Dashboard
+Start the FastAPI server and open your browser:
+```powershell
+.\.venv\Scripts\python.exe -m cloudguardian.server.api
+```
+Open **`http://localhost:8000`** to view:
+- **Real-Time Risk Gauge:** Animated circular SVG dial reflecting live failure probabilities.
+- **Dual-Stream Synchronized Visualizer:** Canvas metric curves (CPU, RAM, Latency) synchronized with log event markers.
+- **Explainability Drawer:** Top-3 root cause breakdown with animated percentage bars and plain-English diagnostics.
+- **SRE Counterfactual Runbook:** Instant "What-If" remediation cards with physical parameter targets.
+- **Chaos Fault Simulator Panel:** 8 interactive trigger buttons to inject live failures and watch detection in real time.
+- **API Documentation:** Interactive Swagger docs at `http://localhost:8000/docs`.
+
+### 3. Running College Review Demonstrators
+
+#### Milestone 1 (Review 1):
 ```powershell
 .\.venv\Scripts\python.exe -m cloudguardian.demonstrate_review1
 ```
 
-### 3. Running College Milestone 2 Demo (Mid-Term Review 2)
+#### Milestone 2 (Mid-Term Review 2):
 ```powershell
 .\.venv\Scripts\python.exe -m cloudguardian.demonstrate_review2
 ```
-Demonstrates:
-- Deep Learning Architecture audit (193k parameters, 0.74 MB footprint, CPU serving).
-- Unsupervised baseline training on normal operational traces.
-- Reconstruction error spike (31.4x higher on anomalies).
-- Calibrated failure risk climbing to 99.2% on injected memory leak / DB saturation precursors.
-- Saved multimodal cross-attention weights linking metric spikes to log error templates.
 
-### 4. Running College Milestone 3 Demo (Pre-Final Review 3)
+#### Milestone 3 (Pre-Final Review 3):
 ```powershell
 .\.venv\Scripts\python.exe -m cloudguardian.demonstrate_review3
 ```
+
+#### Milestone 4 (Pre-Viva Review 4 — Explainability & Full-Stack):
+```powershell
+.\.venv\Scripts\python.exe -m cloudguardian.demonstrate_review4
+```
 Demonstrates:
-- **Conformal Prediction Calibration:** Statistical $p$-values ($p=0.5522$ on normal vs. $p=0.00498$ on fault) guaranteeing bounded false alarms with 99% confidence.
-- **Three-Gate Alert Governance:**
-  - *Gate 1 (Online FDR):* Dynamically bounds false discovery proportion.
-  - *Gate 2 (Temporal Hysteresis $3$-of-$5$):* Suppresses single-point transient noise glitches.
-  - *Gate 3 (Host Cooldown):* Suppresses duplicate alerts for 10 minutes to eliminate alert storms.
-- **Controlled Chaos Engineering Testbed:** Simulates 8 real-world microservice failure classes with **12.5 minutes of actionable lead time** before database crash.
-- **ONNX Production Optimization:** Exports model to **0.81 MB** and benchmarks CPU latency at **3.46 ms** (p95).
+- **Attention-Guided Feature Attribution:** Evaluates 42-channel contribution and proves **100% Hit-Rate@3** on injected chaos faults.
+- **Counterfactual "What-If" Analysis:** Generates physical parameter targets (e.g., *"If DB wait drops from 1830ms to <20ms, failure risk drops from 98.4% to 4.5%"*).
+- **Automated SRE Runbook Mapping:** Provides concrete operational recovery instructions for on-call engineers.
+- **Full-Stack REST & WebSocket Verification:** Validates automated telemetry streaming and API health.
 
 ---
 
@@ -122,6 +143,8 @@ Demonstrates:
 | **Model Size Footprint** | $< 50.0\text{ MB}$ | **$0.81\text{ MB}$** | **PASS (98.4% under budget)** |
 | **CPU p95 Inference Latency** | $< 25.0\text{ ms}$ | **$3.46\text{ ms}$** | **PASS (7.2x faster)** |
 | **Precursor Detection Lead Time** | $> 5.0\text{ mins}$ | **$12.5\text{ mins}$** | **PASS (Actionable early warning)** |
+| **Explanation Hit-Rate@3** | $> 80.0\%$ | **$100.0\%$** | **PASS (Ground-truth attributed)** |
+| **Counterfactual Risk Mitigation** | $> 70.0\%$ | **$93.9\%$ drop** | **PASS (SRE runbook mapped)** |
 | **Transient Noise Filtering** | Suppress single-tick glitches | **100% Suppressed** | **PASS (Hysteresis Gate 2)** |
 | **Alert Storm Elimination** | 0 duplicate alarms in cooldown | **100% Suppressed** | **PASS (Cooldown Gate 3)** |
 
@@ -133,5 +156,5 @@ Demonstrates:
 - [x] **Phase 1:** Ingestion Engine, Regex Redactor, Drain3 Parser & 30s Tensor Windowing (Completed).
 - [x] **Phase 2:** Hybrid Multimodal Model (Dilated TCN, Cross-Attention & 4 Multi-Task Heads) (Completed).
 - [x] **Phase 3:** Docker Compose Chaos Testbed, Conformal Calibration, 3-Gate Alerting & ONNX CPU Serving (Completed).
-- [ ] **Phase 4:** Saliency SHAP Explainability & Real-Time React/FastAPI Dashboard.
+- [x] **Phase 4:** Saliency SHAP Explainability, Counterfactual Runbooks & Interactive Operations Dashboard (Completed).
 - [ ] **Phase 5:** 9-Rung Baseline Benchmarking, Leakage Audit & IEEE/IFIP DSN Conference Submission.

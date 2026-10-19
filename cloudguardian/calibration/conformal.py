@@ -50,6 +50,13 @@ class ConformalCalibrator:
 
         return self.adaptive_threshold
 
+    @property
+    def tau(self) -> float:
+        """Returns the empirical calibrated threshold tau."""
+        if self.adaptive_threshold is None:
+            return 0.00849
+        return self.adaptive_threshold
+
     def compute_p_value(self, test_score: float) -> float:
         """
         Calculates the conformal empirical p-value for a given test non-conformity score:

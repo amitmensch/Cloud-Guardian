@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CloudGuardian — Predictive AIOps Operations Dashboard</title>
+    <link rel="stylesheet" href="/static/dashboard.css">
+</head>
+<body>
+
+    <!-- Header Bar -->
+    <header class="app-header">
+        <div class="brand-section">
+            <div class="brand-logo">CG</div>
+            <div class="brand-text">
+                <h1>CloudGuardian Operations Center</h1>
+                <p>AKGEC / AKTU B.Tech Major Project • Group 10 • Predictive Maintenance Core</p>
+            </div>
+        </div>
+        <div class="header-badges">
+            <span class="badge badge-blue">ONNX CPU 3.46ms</span>
+            <span class="badge badge-emerald">CONFORMAL &alpha;=0.01</span>
+            <span id="connBadge" class="badge badge-amber">
+                <span class="badge-pulse"></span> CONNECTING...
+            </span>
+        </div>
+    </header>
+
+    <!-- Main Dashboard Grid -->
+    <main class="dashboard-grid">
+
+        <!-- Left Column: Risk & Conformal Calibration -->
+        <section class="left-column">
+            <div class="glass-panel risk-card">
+                <div class="panel-title">
+                    <span>Failure Risk Probability</span>
+                    <span class="badge badge-blue">30s GRID</span>
+                </div>
+
+                <div class="gauge-container">
+                    <svg class="gauge-svg" width="220" height="220">
+                        <circle class="gauge-bg" cx="110" cy="110" r="85"></circle>
+                        <circle id="gaugeCircle" class="gauge-value" cx="110" cy="110" r="85"
+                            stroke-dasharray="534"
+                            stroke-dashoffset="534">
+                        </circle>
+                    </svg>
+                    <div class="gauge-center">
+                        <div id="riskValue" class="risk-number">0%</div>
+                        <div class="risk-label">System Normal</div>
+                    </div>
+                </div>
+
+                <div class="ttf-pill">
+                    <span style="color: var(--text-muted);">Est. Lead Time:</span>
+                    <span id="ttfValue" style="color: var(--accent-cyan); font-weight: 700;">-- mins</span>
+                </div>
+
+                <div class="stat-row">
+                    <div class="mini-stat">
+                        <div class="mini-stat-label">Conformal p-value</div>
+                        <div id="pValValue" class="mini-stat-value" style="color: var(--accent-emerald);">0.5522</div>
+                    </div>
+                    <div class="mini-stat">
+                        <div class="mini-stat-label">Reconstruction Error</div>
+                        <div id="mseValue" class="mini-stat-value">0.00072</div>
+                    </div>
+                    <div class="mini-stat">
+                        <div class="mini-stat-label">Current Tick</div>
+                        <div id="tickValue" class="mini-stat-value">#1</div>
+                    </div>
+                    <div class="mini-stat">
+                        <div class="mini-stat-label">Inference Mode</div>
+                        <div class="mini-stat-value" style="color: var(--accent-purple);">ONNX CPU</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3-Gate Alert Governance Status -->
+            <div class="glass-panel" style="padding: 20px; margin-top: 24px;">
+                <div class="panel-title">
+                    <span>Three-Gate Alert Defense</span>
+                    <span class="badge badge-emerald">ACTIVE</span>
+                </div>
+                <p style="font-size: 12px; color: var(--text-muted); line-height: 1.4;">
+                    Multi-tier noise suppression prevents alert storms and transient false alarms.
+                </p>
+
+                <div class="gate-status-row">
+                    <div class="gate-badge">
+                        <div class="gate-label">Gate 1: FDR</div>
+                        <div id="gate1Verdict" class="gate-verdict" style="color: var(--accent-emerald);">PASS</div>
+                    </div>
+                    <div class="gate-badge">
+                        <div class="gate-label">Gate 2: Hysteresis</div>
+                        <div id="gate2Verdict" class="gate-verdict" style="color: var(--accent-amber);">3-of-5</div>
+                    </div>
+                    <div class="gate-badge">
+                        <div class="gate-label">Gate 3: Cooldown</div>
+                        <div id="gate3Verdict" class="gate-verdict" style="color: var(--accent-emerald);">READY</div>
+                    </div>
+                </div>
+
+                <div class="panel-title" style="margin-top: 20px; margin-bottom: 8px;">
+                    <span>Actionable Alerts</span>
+                </div>
+                <div id="alertFeed" class="alert-feed">
+                    <div style="font-size: 12px; color: var(--text-muted); text-align: center; padding: 20px 0;">
+                        No critical precursor alerts. System operating normally.
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Center Column: Synchronized Telemetry Charts & Chaos Testbed -->
+        <section class="center-column">
+            <!-- Hardware Metrics Curve -->
+            <div class="glass-panel chart-card">
+                <div class="panel-title">
+                    <span>Hardware Vital Signs (Continuous Metrics)</span>
+                    <div style="display: flex; gap: 14px; font-size: 11px; font-family: var(--font-mono);">
+                        <span style="color: var(--accent-blue);">● CPU %</span>
+                        <span style="color: var(--accent-purple);">● RAM %</span>
+                        <span style="color: var(--accent-rose);">● DB Wait (ms)</span>
+                    </div>
+                </div>
+                <div class="canvas-container">
+                    <canvas id="metricCanvas"></canvas>
+                </div>
+            </div>
+
+            <!-- Discrete Log Event Frequency Curve -->
+            <div class="glass-panel chart-card">
+                <div class="panel-title">
+                    <span>Discrete Software Logs (Drain3 Event Frequency)</span>
+                    <span style="color: var(--accent-cyan); font-size: 11px; font-family: var(--font-mono);">● Templates E1..E29</span>
+                </div>
+                <div class="canvas-container" style="height: 160px;">
+                    <canvas id="logCanvas"></canvas>
+                </div>
+            </div>
+
+            <!-- Chaos Engineering Simulation Controls -->
+            <div class="glass-panel chaos-card">
+                <div class="panel-title">
+                    <span>Controlled Chaos Fault Injector (Docker Compose Cluster)</span>
+                    <span class="badge badge-rose">8 SCENARIOS</span>
+                </div>
+                <p style="font-size: 12px; color: var(--text-muted);">
+                    Inject live failure precursors to observe multimodal cross-attention detection and lead time.
+                </p>
+
+                <div class="chaos-grid">
+                    <button class="chaos-btn" data-scenario="MEMORY_LEAK_OOM">
+                        <span class="chaos-icon">🧠</span>
+                        <span>Memory Leak</span>
+                    </button>
+                    <button class="chaos-btn" data-scenario="CONNECTION_POOL_EXHAUSTION">
+                        <span class="chaos-icon">🔌</span>
+                        <span>Conn Pool Exhaust</span>
+                    </button>
+                    <button class="chaos-btn" data-scenario="SLOW_QUERIES">
+                        <span class="chaos-icon">🐢</span>
+                        <span>Slow Query Spike</span>
+                    </button>
+                    <button class="chaos-btn" data-scenario="NETWORK_DEGRADATION">
+                        <span class="chaos-icon">📡</span>
+                        <span>Network Jitter</span>
+                    </button>
+                    <button class="chaos-btn" data-scenario="CPU_CONTENTION">
+                        <span class="chaos-icon">🔥</span>
+                        <span>CPU Contention</span>
+                    </button>
+                    <button class="chaos-btn" data-scenario="DISK_EXHAUSTION">
+                        <span class="chaos-icon">💾</span>
+                        <span>Disk Exhaustion</span>
+                    </button>
+                    <button class="chaos-btn" data-scenario="CASCADING_FAILURE">
+                        <span class="chaos-icon">⛓️</span>
+                        <span>Cascading Drop</span>
+                    </button>
+                    <button class="chaos-btn" data-scenario="CONFIG_REGRESSION">
+                        <span class="chaos-icon">⚙️</span>
+                        <span>Config Error</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Right Column: Explainability & Counterfactual SRE Guidance -->
+        <section class="right-column">
+            <!-- Root Cause Breakdown -->
+            <div class="glass-panel explainer-card">
+                <div class="panel-title">
+                    <span>Cross-Attention Root Causes</span>
+                    <span class="badge badge-blue">TOP-3</span>
+                </div>
+                <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 16px;">
+                    Extracted from cross-attention weights linking metric surges to software log templates.
+                </p>
+
+                <div id="rootCausesContainer">
+                    <div class="cause-item">
+                        <div class="cause-header">
+                            <span class="cause-name">cpu_utilization_pct</span>
+                            <span class="cause-pct">38.4%</span>
+                        </div>
+                        <div class="cause-bar-bg">
+                            <div class="cause-bar-fill" style="width: 38.4%;"></div>
+                        </div>
+                    </div>
+                    <div class="cause-item">
+                        <div class="cause-header">
+                            <span class="cause-name">memory_utilization_pct</span>
+                            <span class="cause-pct">31.2%</span>
+                        </div>
+                        <div class="cause-bar-bg">
+                            <div class="cause-bar-fill" style="width: 31.2%;"></div>
+                        </div>
+                    </div>
+                    <div class="cause-item">
+                        <div class="cause-header">
+                            <span class="cause-name">E3: Health check ping OK</span>
+                            <span class="cause-pct">14.5%</span>
+                        </div>
+                        <div class="cause-bar-bg">
+                            <div class="cause-bar-fill" style="width: 14.5%;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="margin-top: 18px; padding: 12px; background: rgba(255, 255, 255, 0.03); border-radius: 10px; border: 1px solid var(--border-subtle);">
+                    <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">Diagnostic Synthesis</div>
+                    <div id="diagSummaryText" style="font-size: 13px; color: var(--text-primary); margin-top: 4px; line-height: 1.4;">
+                        System operating within nominal variance parameters.
+                    </div>
+                </div>
+
+                <!-- Counterfactual Remediation -->
+                <div class="remediation-box">
+                    <div class="remediation-title">
+                        <span>🛡️ SRE Counterfactual Guidance</span>
+                    </div>
+                    <div id="cfText" class="remediation-text">
+                        If database wait latency and error logs remain below baseline thresholds, risk stays under 5%.
+                    </div>
+                    <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(16, 185, 129, 0.2);">
+                        <div style="font-size: 11px; font-weight: 700; color: var(--accent-emerald);">Recommended Operational Runbook:</div>
+                        <div id="runbookText" style="font-size: 12px; color: #CBD5E1; margin-top: 2px;">
+                            No action required. All microservices healthy.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <script src="/static/dashboard.js"></script>
+</body>
+</html>
