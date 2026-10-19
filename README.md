@@ -32,9 +32,22 @@ cloudguardian/
 │   │   └── synchronizer.py    # 30-second temporal grid synchronizer
 │   ├── features/              # Module 2: Feature Engineering
 │   │   └── window_buffer.py   # 60-tick (30-min) sliding window tensor builder
-│   └── demo_phase1.py         # Live demonstrator for Review 1
-├── tests/                     # Automated Test Suite
-│   └── test_phase1.py         # Unit tests for Ingestion & Windowing
+│   ├── models/                # Module 3: Deep Learning Multimodal Core
+│   │   ├── tcn_encoder.py     # Dilated Causal TCN (Dilations: 1, 2, 4, 8, 16)
+│   │   ├── log_encoder.py     # Template frequency & sequence encoder
+│   │   ├── cross_attention.py # Bidirectional multimodal cross-attention
+│   │   ├── heads.py           # Reconstruction, Forecast, Risk, and TTF heads
+│   │   └── cloudguardian_model.py # Unified end-to-end architecture
+│   ├── training/              # Module 4: Multi-Task Optimization
+│   │   ├── loss.py            # Masked multi-task loss (MSE + Forecast + BCE + TTF)
+│   │   └── trainer.py         # Training loop & checkpointing manager
+│   ├── demonstrate_review1.py # Live demonstrator for Review 1
+│   └── demonstrate_review2.py # Live demonstrator for Mid-Term Review 2
+├── notebooks/                 # Interactive Jupyter Notebooks
+│   └── milestone1_review_demo.ipynb
+├── tests/                     # Automated Test Suite (19 passing unit tests)
+│   ├── test_phase1.py         # Ingestion & Windowing tests
+│   └── test_phase2.py         # Deep Learning Core & Multi-Task tests
 ├── pytest.ini                 # Pytest configuration
 ├── requirements.txt           # Project dependencies
 └── README.md                  # Project overview & documentation
@@ -44,38 +57,31 @@ cloudguardian/
 
 ## Getting Started
 
-### 1. Activating the Environment
-The project uses an isolated Python 3.11 virtual environment in `.venv`:
-
-```powershell
-# In PowerShell:
-.\.venv\Scripts\activate
-```
-
-### 2. Running Automated Unit Tests
-Verify that all parsing, normalization, and window tensor operations are functioning correctly:
-
+### 1. Running All Automated Unit Tests (19 Passing Tests)
 ```powershell
 .\.venv\Scripts\python.exe -m pytest -v
 ```
 
 Expected result:
 ```text
-============================== 8 passed in 0.22s ==============================
+============================= 19 passed in 10.34s =============================
 ```
 
-### 3. Running College Milestone 1 Demo
-You can run the interactive demonstrator either via terminal or as a Jupyter Notebook:
-
-#### Option A: Terminal Live Demonstrator
+### 2. Running College Milestone 1 Demo (Review 1)
 ```powershell
 .\.venv\Scripts\python.exe -m cloudguardian.demonstrate_review1
 ```
-This script will parse incoming logs, extract canonical HDFS templates ($E_1$ to $E_{29}$), align Prometheus metrics onto a 30-second grid, and construct and validate the 3D PyTorch tensor `torch.Size([32, 60, 42])`.
 
-#### Option B: Interactive Jupyter Notebook
-Open and run cell-by-cell in VS Code, Antigravity IDE, or Jupyter:
-`notebooks/milestone1_review_demo.ipynb`
+### 3. Running College Milestone 2 Demo (Mid-Term Review 2)
+```powershell
+.\.venv\Scripts\python.exe -m cloudguardian.demonstrate_review2
+```
+This script demonstrates:
+- Deep Learning Architecture audit (193k parameters, 0.74 MB footprint, CPU serving).
+- Unsupervised baseline training on normal operational traces.
+- Reconstruction error spike (31.4x higher on anomalies!).
+- Calibrated failure risk climbing to 99.2% on injected memory leak / DB saturation precursors.
+- Saved multimodal cross-attention weights linking metric spikes to log error templates.
 
 ---
 
@@ -83,7 +89,7 @@ Open and run cell-by-cell in VS Code, Antigravity IDE, or Jupyter:
 
 - [x] **Phase 0:** Research Proposal Synopsis & Literature Review (Approved).
 - [x] **Phase 1:** Ingestion Engine, Regex Redactor, Drain3 Parser & 30s Tensor Windowing (Completed).
-- [ ] **Phase 2:** Hybrid Multimodal Model (Dilated TCN, Cross-Attention & 4 Multi-Task Heads).
+- [x] **Phase 2:** Hybrid Multimodal Model (Dilated TCN, Cross-Attention & 4 Multi-Task Heads) (Completed).
 - [ ] **Phase 3:** Docker Compose Chaos Testbed, Conformal Calibration & 3-Gate Alerting.
 - [ ] **Phase 4:** Saliency SHAP Explainability & Real-Time React/FastAPI Dashboard.
 - [ ] **Phase 5:** 9-Rung Baseline Benchmarking, Leakage Audit & IEEE/IFIP DSN Conference Submission.
